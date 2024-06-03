@@ -1,2 +1,1 @@
-# blog.github.io
-个人博客
+# [nonewbie的博客](https://nonewbie.github.io/blog)
