@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2024-06-03T09:36:32.465Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" etag="b7419WRTbJEPCHoRlcQr" version="24.4.13" type="github">
+<mxfile host="app.diagrams.net" modified="2024-09-05T08:45:49.970Z" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36" etag="OSCaUNTjlGmAsvkBGYc9" version="24.6.5" type="github" pages="3">
   <diagram name="第 1 页" id="Rs18dI2a3HygZKJYflAT">
     <mxGraphModel dx="794" dy="458" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -30,6 +30,100 @@
         </mxCell>
         <mxCell id="CMubnNj333F3mV1wrqiR-17" value="浏览器" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="280" y="385" width="120" height="60" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="3pF_LA4ovtp34hl_gydm" name="第 2 页">
+    <mxGraphModel dx="1434" dy="738" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-14" value="Android/IOS" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="480" width="210" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-1" value="Windows/Linux Samba服务" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="55" y="160" width="605" height="230" as="geometry" />
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="HuF_ut8duJeTf9nPyyyu-3" target="HuF_ut8duJeTf9nPyyyu-7">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="580" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-5" value="定时目录同步到电脑" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="HuF_ut8duJeTf9nPyyyu-4">
+          <mxGeometry x="0.0833" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-3" value="&lt;div&gt;APP&lt;/div&gt;FolderSync" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="520" width="70" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-7" value="磁盘2" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="205" width="60" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="HuF_ut8duJeTf9nPyyyu-9" target="HuF_ut8duJeTf9nPyyyu-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-13" value="rsync定时同步" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="HuF_ut8duJeTf9nPyyyu-12">
+          <mxGeometry x="-0.2205" y="3" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="HuF_ut8duJeTf9nPyyyu-9" value="磁盘1" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="205" width="60" height="140" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="b-0VcTFR6PBKzBnUGAz5" name="第 3 页">
+    <mxGraphModel dx="1434" dy="738" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-10" value="低功耗嵌入式开发板" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="480" y="140" width="145" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-14" value="硬盘盒" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="540" y="175" width="80" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-11" value="硬盘2" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="540" y="205" width="60" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-1" value="Android/IOS" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="80" y="480" width="210" height="170" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-2" value="Windows/Linux" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;" vertex="1" parent="1">
+          <mxGeometry x="60" y="140" width="145" height="220" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="Kzj41GjBOV4atMMIAeXJ-5" target="Kzj41GjBOV4atMMIAeXJ-11">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="570" y="580" />
+            </Array>
+            <mxPoint x="570" y="345" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-4" value="定时目录同步到电脑" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" vertex="1" connectable="0" parent="Kzj41GjBOV4atMMIAeXJ-3">
+          <mxGeometry x="0.0833" y="2" relative="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-5" value="&lt;div&gt;APP&lt;/div&gt;FolderSync" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="150" y="520" width="70" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-12" value="rsync 自动同步" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" edge="1" parent="1" source="Kzj41GjBOV4atMMIAeXJ-9" target="Kzj41GjBOV4atMMIAeXJ-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-9" value="硬盘1" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="90" y="205" width="60" height="140" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-15" value="A地" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="102.5" y="90" width="60" height="30" as="geometry" />
+        </mxCell>
+        <mxCell id="Kzj41GjBOV4atMMIAeXJ-16" value="B地" style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="1">
+          <mxGeometry x="522.5" y="90" width="60" height="30" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
