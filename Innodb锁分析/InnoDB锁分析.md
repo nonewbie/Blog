@@ -1,6 +1,6 @@
 # InnoDB锁分析
 
-Mysql存储引擎常见的有InnoDB、MyISAM、Memory，而InnoDB最初有第三方开发后来被Oracle收购并于5.5.8版本开始成为默认的存储引擎，也成为应用最为广泛的引擎。本文就来分析它在生产环境中必要麻烦的死锁问题和它存在的锁。
+Mysql存储引擎常见的有InnoDB、MyISAM、Memory，而InnoDB最初由第三方开发，后来被Oracle收购并于5.5.8版本开始成为默认的存储引擎，也成为应用最为广泛的引擎。本文就来分析它比较棘手的在生产环境中的死锁问题。
 
 - 死锁是如何产生的
 
@@ -11,10 +11,13 @@ Mysql存储引擎常见的有InnoDB、MyISAM、Memory，而InnoDB最初有第三
 ## 数据库的锁的种类
 
 - 全局锁
+  
+  - 锁住整个数据库
 
 - 表级锁
   
-  - 
+  - 表锁
+  - 元数据锁
 
 - 行锁
   
@@ -24,7 +27,9 @@ Mysql存储引擎常见的有InnoDB、MyISAM、Memory，而InnoDB最初有第三
   
   - Next-Key Lock（临键锁），其实是Record Lock和Gap Lock的组合
     
-    为什么叫Next-Key Lock?因为相对于Previous-Key Lock（锁定的区间是前闭后开，比如[10,20)），Next-Key Lock锁定的区间是前开后闭，比如(10,20]
+    为什么叫Next-Key Lock?因为相对于Previous-Key Lock（锁定的区间是前闭后开，比如[10,20)，Next-Key Lock锁定的区间是前开后闭，比如(10,20]
+  
+  行锁是Innodb引擎为了在RR（可重复读）级别下解决幻读而存在的。
 
 > 事务的隔离级别有哪些？
 
@@ -37,6 +42,8 @@ Mysql存储引擎常见的有InnoDB、MyISAM、Memory，而InnoDB最初有第三
 - Serialize（串行化）
 
 MyISAM存储引擎不支持事务，不支持行级锁，所以在这里深入探讨Innodb引擎的锁。
+
+死锁通常由于行级别的锁导致的，所以重点探讨行级别的锁。
 
 ## 哪些语句会导致加行级锁
 
@@ -59,41 +66,41 @@ MyISAM存储引擎不支持事务，不支持行级锁，所以在这里深入�
 
 ### X锁会阻塞其他事务的S锁、X锁申请
 
-| 时间  | 事务1                                          | 事务2                                                          |
-| --- | -------------------------------------------- | ------------------------------------------------------------ |
-| T1  | start transaction;                           |                                                              |
-| T2  | select * from user where id = 10 for update; | start transaction;                                           |
-| T3  |                                              | select * from user where id = 10 lock in share mode; // S型行锁 |
-| T4  | commit;                                      |                                                              |
+| 时间  | 事务1                                          | 事务2                                                             |
+| --- | -------------------------------------------- | --------------------------------------------------------------- |
+| T1  | start transaction;                           |                                                                 |
+| T2  | select * from user where id = 10 for update; | start transaction;                                              |
+| T3  |                                              | select * from user where id = 10 lock in share mode; // S型行锁，阻塞 |
+| T4  | commit;                                      |                                                                 |
 
 以上，事务1在T2时持有X型记录锁，事务2在T3时会一直阻塞，事务1T4释放了X型记录锁，事务2可以继续执行。
 
-| 时间  | 事务1                                          | 事务2                                                  |
-| --- | -------------------------------------------- | ---------------------------------------------------- |
-| T1  | start transaction;                           |                                                      |
-| T2  | select * from user where id = 10 for update; | start transaction;                                   |
-| T3  |                                              | select * from user where id = 10 for update; // X型行锁 |
-| T4  | commit;                                      |                                                      |
+| 时间  | 事务1                                          | 事务2                                                     |
+| --- | -------------------------------------------- | ------------------------------------------------------- |
+| T1  | start transaction;                           |                                                         |
+| T2  | select * from user where id = 10 for update; | start transaction;                                      |
+| T3  |                                              | select * from user where id = 10 for update; // X型行锁，阻塞 |
+| T4  | commit;                                      |                                                         |
 
 以上，事务1在T2时持有X型记录锁，事务2在T3时会一直阻塞，事务1T4释放了X型记录锁，事务2可以继续执行。
 
 ### S锁会阻塞其他事务的X锁申请，但是不会阻塞S锁申请
 
-| 时间  | 事务1                                                  | 事务2                                          |
-| --- | ---------------------------------------------------- | -------------------------------------------- |
-| T1  | start transaction;                                   |                                              |
-| T2  | select * from user where id = 10 lock in share mode; | start transaction;                           |
-| T3  |                                                      | select * from user where id = 10 for update; |
-| T4  | commit;                                              |                                              |
+| 时间  | 事务1                                                  | 事务2                                                |
+| --- | ---------------------------------------------------- | -------------------------------------------------- |
+| T1  | start transaction;                                   |                                                    |
+| T2  | select * from user where id = 10 lock in share mode; | start transaction;                                 |
+| T3  |                                                      | select * from user where id = 10 for update; // 阻塞 |
+| T4  | commit;                                              |                                                    |
 
 以上，事务1在T2时持有S型记录锁，事务2在T3时会一直阻塞，事务1T4释放了S型记录锁，事务2可以继续执行。
 
-| 时间  | 事务1                                                  | 事务2                                                  |
-| --- | ---------------------------------------------------- | ---------------------------------------------------- |
-| T1  | start transaction;                                   |                                                      |
-| T2  | select * from user where id = 10 lock in share mode; | start transaction;                                   |
-| T3  |                                                      | select * from user where id = 10 lock in share mode; |
-| T4  | commit;                                              |                                                      |
+| 时间  | 事务1                                                  | 事务2                                                        |
+| --- | ---------------------------------------------------- | ---------------------------------------------------------- |
+| T1  | start transaction;                                   |                                                            |
+| T2  | select * from user where id = 10 lock in share mode; | start transaction;                                         |
+| T3  |                                                      | select * from user where id = 10 lock in share mode; // 成功 |
+| T4  | commit;                                              |                                                            |
 
 以上，事务1在T2时持有S型记录锁，事务2在T3时可以直接执行。
 
@@ -108,13 +115,13 @@ MyISAM存储引擎不支持事务，不支持行级锁，所以在这里深入�
 ```sql
 create database test;
 use test;
-create table user
-(
-    id   int auto_increment primary key,
-    name varchar(10),
-    age  int,
-    index idx_name(name)
-) engine innodb;
+CREATE TABLE `user` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(10) DEFAULT NULL,
+  `age` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `user_age_index` (`age`)
+) ENGINE=InnoDB
 ```
 
 表中的数据如下
@@ -122,8 +129,6 @@ create table user
 ![](assets/2024-08-30-10-26-17-image.png)
 
 #### 1. 等值查询的记录存在时
-
-按照一下的顺序分别执行事务1和事务2，发现事务2会在T3时刻执行update后一直处于阻塞状态（直到超时）
 
 ```sql
 start transaction;
@@ -135,6 +140,8 @@ select * from user where id = 10 for update;
 mysql8.0 可以通过`select * from performance_schema.data_locks\G`查看当前系统中的事务、锁类型、锁等待情况、锁记录的范围
 
 ![](assets/2024-08-30-10-28-58-image.png)
+
+![](assets/唯一索引等值查询存在.svg)
 
 - **LOCK_TYPE**指示锁类型
   
@@ -150,7 +157,7 @@ mysql8.0 可以通过`select * from performance_schema.data_locks\G`查看当前
   
   - X：临键锁（Next-Key Lock）
   
-  - IX：意向锁
+  - IX：插入意向锁（Insert Intention Lock）
 
 从这个图中可以看到这个事务加了两个锁，分别为
 
@@ -168,9 +175,9 @@ mysql8.0 可以通过`select * from performance_schema.data_locks\G`查看当前
 
 **唯一索引等值查询，且记录存在时，行级别的锁是Record Lock，而非Gap Lock、Next-Key Lock。**
 
-- 因为该事务对id=10的索引加了记录锁，所以其他事务**无法插入**该记录，该事务多次查询id=1的记录时，不会出现**结果集多**了的情况，也就避免了幻读。
+- 因为该事务对PRIMARY索引的id=10的记录加了记录锁，所以其他事务**无法插入**该记录，该事务多次查询id=1的记录时，不会出现**结果集多**了的情况，也就避免了幻读。
 
-- 因为该事务对id=10的索引加了记录锁，所以其他事务**无法删除**该记录，该事务多次查询id=1的记录时，不会出现**结果集少**了的情况，也就避免了幻读。
+- 因为该事务对PRIMARY索引的id=10的记录加了记录锁，所以其他事务**无法删除**该记录，该事务多次查询id=1的记录时，不会出现**结果集少**了的情况，也就避免了幻读。
 
 - 而幻读就是由于其他事务的**插入、删除**导致本事务查询的结果集不同的场景。
 
@@ -187,14 +194,16 @@ mysql8.0 可以通过`select * from performance_schema.data_locks\G`查看当前
 ```sql
 -- 表中数据是id=10,11,20,30
 start transaction;
-select * from user where id = 15 for update; -- 此时15介于(10,30)之间
+select * from user where id = 15 for update; -- 此时15介于(11,20)之间
 ```
 
 ![](assets/2024-08-30-10-32-13-image.png)
 
+![](assets/2024-09-09-15-34-22-image.png)
+
 从图中可以看出，该事务加1个行级别的锁（表级别的锁不在赘述）即为
 
-- X型的间隙锁（行级别）：id=20的主键索引的Gap Lock，范围是（11，20），也就是说如果其他事务此时插入id为12、13、14、15、16、17、18、19的记录时都会被阻塞。
+- X型的间隙锁（行级别）：在PRIMARY索引的id=20的记录上加了一个X型的Gap Lock，范围是（11，20），也就是说如果其他事务此时插入id为12、13、14、15、16、17、18、19的记录时都会被阻塞。
 
 例如以下两个事务
 
@@ -222,9 +231,7 @@ select * from user where id = 15 for update; -- 此时15介于(10,30)之间
 
 ##### 2. where 条件的id>id_max时
 
-- 锁范围为(30,+∞]，此时展示的是**Next-Key Lock，而非Gap Lock**
-
-注意：虽然这里展示的时Next-Key Lock，但实际索引上并没有`supremum pseudo-record`这个记录，也就是说实际上加的也还是**Gap Lock**。这点在后面分析幂等插入订单场景时可以
+- 锁范围为(30,+∞]，此时展示的是**Next-Key Lock**
 
 ```sql
 -- 表中数据依然是id=10,11,20,30
@@ -234,9 +241,11 @@ select * from user where id = 50 for update; -- 此时50>30
 
 ![](assets/2024-08-30-11-11-47-image.png)
 
+![](assets/2024-09-09-15-34-43-image.png)
+
  因为LOCK_DATA只展示上限，而此时表中大于`id=50`的临近的id是+∞，表中小于`id=50`的临近的id是30，所以锁定范围是(30,+∞]。
 
-> **为何不是Gap Lock？**
+注意：虽然这里展示的时Next-Key Lock，但实际索引上并没有`supremum pseudo-record`这个记录，也就是说实际上加的也还是**Gap Lock**。这点在后面分析幂等插入订单场景时可以见到。
 
 ##### 3. where 条件的id<id_min时
 
@@ -249,6 +258,8 @@ select * from user where id = 5 for update; -- 此时5<10
 ```
 
 ![](assets/2024-08-30-11-14-01-image.png)
+
+![](assets/2024-09-09-15-38-35-image.png)
 
 因为LOCK_DATA只展示上限，而此时表中大于`id=5`的临近的id是10，而小于`id=5`的临近的id值是-∞，所以Gap Lock范围是（-∞,10）
 
@@ -269,6 +280,8 @@ select * from user where id > 25 for update;
 ```
 
 ![](assets/2024-08-30-14-05-09-image.png)
+
+![](assets/2024-09-09-15-40-37-image.png)
 
 从上图可知，加了两个Next-Key Lock分别为（表级别的X型意向锁就不再赘述）
 
@@ -305,6 +318,8 @@ select * from user where id >= 20 for update;
 
 ![](assets/2024-08-30-15-30-59-image.png)
 
+![](assets/2024-09-09-18-10-43-image.png)
+
 从上图可知，加了两个Next-Key Lock和一个1个Record Key，分别为（表级别的X型意向锁就不再赘述）
 
 - 在id=supremum pseudo-record的主键索引上加了一个**Next-Key Lock**，范围是(30,+∞]，意味着其他事务无法插入id>30的记录
@@ -329,7 +344,7 @@ select * from user where id >= 20 for update;
   
   - (20, 30)，id=30的Gap Lock
 
-- 综合后，由于(20, 30]，id=30上的Next-Key Lock包含(20, 30)，id=30的Gap Lock，所以最终结果应该为(30, +∞]和(20, 30]这两个Next-Key Lock
+- 综合后，由于(20, 30]，id=30上的Next-Key Lock包含(20, 30)和id=30的Gap Lock，所以最终结果应该为(30, +∞]和(20, 30]这两个Next-Key Lock
 
 ```sql
 -- 表中数据依然是id=10,11,20,30
@@ -414,6 +429,57 @@ CREATE TABLE `user` (
 
 #### 查询记录存在
 
+```sql
+start transaction;
+select * from user where age = 20 for update; --表中没有age=20的记录
+```
+
+ ![](assets/2024-09-06-18-33-32-image.png)
+
+![](assets/非唯一索引等值查询存在.svg)
+
+- 在`user_age_index`索引的age=20的记录上加了一个X型的Next-Key Lock，范围是(11,20]
+  
+  - 此时其他事务如果想插入age范围在(11,20)的记录，都会被阻塞
+  
+  - 此时其他事务如果想更新、删除、插入age=20的记录，都会被阻塞
+  
+  - 此时其他事务如果想插入age=11，id范围在(11,+∞)的记录，都会被阻塞
+  
+  - 此时其他事务如果想插入age=11，id范围在(-∞,11)的记录，都会成功
+
+- 在主键索引的id=20的记录上加了一个X型的Record Lock
+  
+  - 此时其他事务如果想更新、删除、插入id=20的记录，都会被阻塞
+    
+    | 时间线 | 事务1                                           | 事务2                                            |
+    | --- | --------------------------------------------- | ---------------------------------------------- |
+    | T1  | start transaction;                            | start transaction;                             |
+    | T2  | select * from user where age = 20 for update; |                                                |
+    | T3  |                                               | update user set name = 200 where id= 20; // 阻塞 |
+    
+    事务2的信息：
+    
+    ![](assets/2024-09-06-18-43-48-image.png)
+    
+    `SELECT * FROM performance_schema.data_lock_waits \G`查询锁等待情况
+    
+    ![](assets/2024-09-06-18-54-34-image.png)
+    
+    `BLOCKING_ENGINE_LOCK_ID=136087081061784:3:4:8:136086978371640`正是事务1的PRIMARY索引的id=20的Record Lock（见前面图的3.row）
+    
+    表示事务2当前正在等待事务1的的PRIMARY索引的id=20的Record Lock的锁。
+
+- 在`user_age_index`索引的age=30的记录上加了一个X型的Gap Lock，范围是(20,30)，`LOCK_DATA`中第一个30是age=30，第二个30是该记录的id=30
+  
+  - 此时其他事务如果想插入age范围在(20,30)的记录，都会被阻塞
+  
+  - 此时其他事务如果想插入age=30，id范围在(-∞,11)的记录，都会阻塞（排除id已存在的，比如id=10会被主键唯一性约束检测返回失败）
+  
+  - 此时其他事务如果想插入age=30，id范围在(30，+∞)的记录，都会成功
+
+以上重点分析了Next-KeyLock(11,20]和Gap Key Lock(20,30)的边界值age=11、30时的插入情况，因为age并没有唯一性约束，所以当插入的记录的age=11、30时，在部分场景下是可以成功的，如上面的举例。
+
 #### 查询记录不存在
 
 ```sql
@@ -423,7 +489,9 @@ select * from user where age = 25 for update; --表中没有age=25的记录
 
 ![](assets/2024-09-04-17-00-43-image.png)
 
-- 在`user_age_index`索引的age=30的记录上加了一个X型的Gap Lock，范围是(20,30)。
+![](assets/非唯一索引等值查询不存在.svg)
+
+在`user_age_index`索引的age=30的记录上加了一个X型的Gap Lock，范围是(20,30)。
 
 - `LOCK_DATA`的第一个30是age的30，第二个30指的是age=30记录的id值也是30。
 
@@ -431,25 +499,110 @@ select * from user where age = 25 for update; --表中没有age=25的记录
 
 - 此时其他事务如果想插入age范围在(20,30)的记录时，都会阻塞
 
-- 此时其他事务如果想插入age=20，id范围在(20,+∞)的记录时，都会阻塞
+- 此时其他事务如果想插入age=20，id范围在(20,+∞)的记录时，都会阻塞，因为待插入的记录也会洛在`user_age_index`索引的(20,30)记录之间
 
 - 此时其他事务如果想插入age=20，id范围在(-∞,20)的且id不等于10、11的记录时，都能成功
 
-- 此时其他事务如果想插入age=30，id范围在(-∞,30)的记录时，都会阻塞
+- 此时其他事务如果想插入age=30，id范围在(-∞,30)的记录时，都会阻塞，因为待插入的记录也会洛在`user_age_index`索引的(20,30)记录之间
 
 - 此时其他事务如果想插入age=30，id范围在(30,+无穷大)的记录时，都会能成功
 
 - 此时其他事务如果想插入age范围在(-∞,20)、(30,+∞)的记录时，都可以成功（排除id已存在的）
 
+从上边可以看出，非唯一索引上的等值查询时，对于锁住的非唯一索引记录(age)的GapLock的**边界值**，能否插入成功还需要看待插入记录的主键值(id)是否在锁住的age索引中对应的id范围内，如果在则插入被阻塞，如果不在则插入成功。
+
 ### 非唯一索引范围查询
+
+这里只分析大于的场景，小于（<）的加锁逻辑类似于大于；小于等于（<=）、大于等于（>=）的场景也是结合了小于、大于和等于的场景。
+
+#### 大于（>）
+
+```sql
+start transaction;
+select * from user where age > 15 for update;
+```
+
+![](assets/2024-09-09-12-24-01-image.png)
+
+（截图中第一条是表级别意向锁，这里不再赘述展示）
+
+![](assets/非唯一索引范围查询.svg)
+
+`user_age_index`索引上有三个行级别的锁：
+
+- X型的Next-Key Lock，锁在age=20，范围为(11,20]
+
+- X型的Next-Key Lock，锁在age=30，范围为(20,30]
+
+- X型的Next-Key Lock，锁在age=supremum pseudo-record，范围为(30,+∞]
+
+主键索引`PRIMARY`上有两个行级别的锁：
+
+- X型的Record Lock，锁在id=20
+
+- X型的Record Lock，锁在id=30
+
+### 无索引的查询
+
+如果update、delete、select ... for update、select ... for share等加锁性质的语句没有走到索引，导致全表扫描，那么PRIMARY（主键）索引的所有记录都会加上Next-Key Lock，相当于对整个表都加锁了。所以需要极力保证这些语句走索引。
+
+```sql
+start transation;
+select * from user where name = 20 for update;
+```
+
+![](assets/2024-09-09-14-05-24-image.png)
+
+**注意**：如果因为没有走索引导致这种场景的几乎全表锁，也并不是在另一个事务中所有其他CRUD都会被阻塞，比如以下场景都可以成功
+
+|        |                                          | 说明                                                                              |
+| ------ | ---------------------------------------- | ------------------------------------------------------------------------------- |
+| 快照读    | select * from user where id = 20;        | 此时是普通的select，没有for share、for update                                             |
+| update | update user set name = 15 where id = 15; | 此时表中没有id=15的记录                                                                  |
+| update | update user set name = 15 where age= 15; | 此时表中没有age=15的记录。<br/>update user set name = 15 where name = 15仍然会被阻塞，因为name没有索引 |
+| delete | delete from user where id =15;           | 此时表中没有id=15的记录                                                                  |
+| delete | delete from user where age =15;          | 此时表中没有age=15的记录。<br/>delete from user where name=15仍然会被阻塞，因为name没有索引            |
 
 ## 行级锁的互斥关系分析
 
-|     |     |     |
-| --- | --- | --- |
-|     |     |     |
-|     |     |     |
-|     |     |     |
+### Record Lock（行记录锁）
+
+|               | S-Record Lock | X-Record Lock |
+| ------------- | ------------- | ------------- |
+| S-Record Lock | 兼容            | 不兼容           |
+| X-Record Lock | 不兼容           | 不兼容           |
+
+### Gap Lock（间隙锁）
+
+|            | S-Gap Lock | X-Gap Lock |
+| ---------- | ---------- | ---------- |
+| S-Gap Lock | 兼容         | 兼容         |
+| X-Gap Lock | 兼容         | 兼容         |
+
+### Insert Intention Lock（插入意向锁）
+
+|               | Insert Intention Lock |
+| ------------- | --------------------- |
+| S-Record Lock | 不兼容                   |
+| X-Record Lock | 不兼容                   |
+| S-Gap Lock    | 不兼容                   |
+| X-Gap Lock    | 不兼容                   |
+
+### 总结
+
+- Record Lock（行记录锁）是区分X、S型的，两个Record Lock 之间会**形成互斥关系**
+
+- Gap Lock（间隙锁）是分X、S型的，两个Gap Lock之间**不会形成互斥关系**
+
+- Insert Intention Lock（插入意向锁）理解为一个X型锁，会和Record Lock、Gap Lock形成互斥关系
+
+- 为什么不关注Record Lock和Gap Lock之间的互斥关系：这两个可以理解为不同的范围，实际上肯定兼容
+
+- 为什么不关注Next-Key Lock与其他的互斥关系：Next-Key Lock=Record Lock+Gap Lock，互斥关系也可以推导
+
+- 为什么不分析两个Insert Intention Lock之间的互斥关系：因为获取Insert Intention Lock之前会先获取Record Lock、Gap Lock、Next-Key Lock，所以实际上是Insert Intention Lock和这三个行级别的锁之间的互斥关系
+
+- Gap Lock会和Insert Intention Lock、表级别锁形成互斥关系
 
 ## 表级别的锁
 
@@ -590,7 +743,7 @@ commit
    
    1. 为什么两个事务能都能获得`supremum pseudo-record`的Record Lock？
       
-      如果一个事务在某条记录上加了一个X型Record Lock，其他事务是不能再获取这条记录的X型Record Lock的，这里事务2为什么也同时可以获取呢？实际上`supremum pseudo-record`并不真实存在，这里虽然显示的是Next-Key Lock，锁住的范围确是(30,+∞)，并没有Record LocK。
+      如果一个事务在某条记录上加了一个X型Record Lock，其他事务是不能再获取这条记录的X型Record Lock的，这里事务2为什么也同时可以获取呢？实际上`supremum pseudo-record`并不真实存在，这里虽然显示的是Next-Key Lock，锁住的范围确是(30,+∞)，并没有Record Lock。
    
    2. 为什么事务1锁住了(30,+∞)范围，事务2还能锁住(30,+∞)范围
       
@@ -610,11 +763,74 @@ commit
 > 
 > InnoDB选择undo量最小的事务进行回滚
 
-这个案例中t_order_id_index是一个唯一索引，但如果如果只是一个普通的非唯一索引时，上述的死锁场景依然成立
+这个案例中t_order_id_index是一个唯一索引，但如果只是一个普通的非唯一索引时，上述的死锁场景依然成立
 
-### 2. 批量插入
+#### 解决思路
 
-## 排查死锁的思路路径
+在进入插入订单业务逻辑时，业务使用key为orderid的分布式锁，然后事务内部可以使用快照读（即不再使用select ... for update，而是普通的select）。
+
+```sql
+redLock.lock(order_id_40); -- 分布式锁，比如redis的RedLock
+start transaction;
+select 1 from t_order where order_id = 40;
+-- 如果不存在则插入
+insert into t_order(order_id) values(40);
+commit;
+redLock.unLock(order_id_40);
+```
+
+这个场景出现的原因在于，为了防止同一个订单号被同时调用两次`插入逻辑`，但是却在Innodb引擎层因为两个不同的订单号的插入而死锁。所以只需要先保证同一个订单号在同一个时刻只能有一个线程进入`插入逻辑`即可。
+
+### 2. 投资贷款
+
+将投资人A、B的钱拆成两份借给C、D两人，两个事务获取锁的顺序不一致导致死锁。
+
+| 时间线 | 事务1                            | 事务2                            |
+| --- | ------------------------------ | ------------------------------ |
+| T1  | start transation;              | start transation;              |
+| T2  | update ... where id = A;       |                                |
+| T3  |                                | update ... where id = B;       |
+| T4  | update ... where id = B; // 阻塞 |                                |
+| T5  |                                | update ... where id = A; // 死锁 |
+
+表中id是唯一索引或者非唯一索引都会死锁
+
+#### 解决思路
+
+在事务开始时就锁住A、B两个记录，比如`select ... where id in('A', 'B') for update;`这个语句in中的A、B两个值不用区分先后。
+
+### 3. 加锁先后顺序不同
+
+```sql
+CREATE TABLE `t_order` (
+   `id` int NOT NULL AUTO_INCREMENT COMMENT '自增id',
+   `day` char(8) DEFAULT NULL COMMENT '自然日',
+   `userid` int DEFAULT NULL,
+   PRIMARY KEY (`id`),
+   KEY `index_order_userid` (`userid`),
+   KEY `index_order_day` (`day`)
+) ENGINE=InnoDB;=InnoDB;
+```
+
+![](assets/2024-09-09-18-01-40-image.png)
+
+| 时间线 | 事务1                                           | 事务2                                      |
+| --- | --------------------------------------------- | ---------------------------------------- |
+| T1  | start transaction;                            | start transaction;                       |
+| T2  | select * from t_order where day = '20201001'; |                                          |
+| T3  |                                               | select  * from t_order where userid > 1; |
+
+事务1的记录锁情况
+
+![](assets/2024-09-09-18-22-40-image.png)
+
+事务2的加锁情况
+
+![](assets/2024-09-09-18-23-05-image.png)
+
+可以见事务1和事务2同时都在主键索引上的id=1和id=2的记录上加锁了，但是顺序却不同，所以可能导致死锁。但是这种概率非常小。
+
+## 排查死锁的思路
 
 ### `show engine innodb status`查看最近一次死锁详情
 
@@ -627,10 +843,11 @@ commit
 ### 查看具体死锁的详情
 
 ```sql
-select * from INFORMATION_SCHEMA.INNODB_TRX; -- 查看锁
-select * from INFORMATION_SCHEMA.INNODB_LOCKS; -- 查看锁等待
-select * from INFORMATION_SCHEMA.INNODB_LOCK_WAITS; -- 查看连接情况
-select * from INFORMATION_SCHEMA.PROCESSLIST;
+select * from INFORMATION_SCHEMA.INNODB_TRX; -- 查看事务 >V5.6
+select * from INFORMATION_SCHEMA.INNODB_LOCKS; -- 查看锁 V5.6
+SELECT * FROM performance_schema.data_lock_waits; -- 查看锁等待情况 V8.0
+select * from INFORMATION_SCHEMA.INNODB_LOCK_WAITS; -- 查看锁等待 V5.6
+select * from INFORMATION_SCHEMA.PROCESSLIST; -- 查看连接情况 >V5.6 
 ```
 
 ### 查看数据库中所有锁的整体情况
@@ -662,7 +879,7 @@ innodb_print_all_deadlocks = 1 # 死锁日志自动记录到error日志中
 
 以下即为开启`innodb_print_all_deadlocks`后的死锁日志，包含`transactions deadlock detected`关键字
 
-![](assets/2024-09-02-15-55-53-image.png)
+![](assets/2024-09-02-15-55-53-image.png) 
 
 ### Mysql 配置文件路径
 
