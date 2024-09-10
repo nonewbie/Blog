@@ -914,3 +914,9 @@ mysql 会按照如下的顺序进行查找，后读入的配置文件会覆盖�
 | Windows                  | 安装路径下的 my.ini 文件                |
 | macOS 使用官方安装包（DMG）安装     | /usr/local/mysql/my.cnf         |
 | macOS 使用 Homebrew 安装     | /usr/local/etc/my.cnf           |
+
+## 引用
+
+- [MySQL 是怎么加锁的？](https://xiaolincoding.com/mysql/lock/how_to_lock.html)
+- [MySQL 有哪些锁？](https://xiaolincoding.com/mysql/lock/mysql_lock.html)
+- [Mysql常见死锁问题](https://juejin.cn/post/6970589814051586062?from=search-suggest)
